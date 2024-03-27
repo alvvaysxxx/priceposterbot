@@ -174,9 +174,6 @@ bot.on("message", async (ctx) => {
         post.msg = ctx.message.text;
         await post.save();
       }
-    } else {
-      // Если условие не выполнено, отправляем простое сообщение
-      ctx.reply("hi");
     }
   } catch (err) {
     console.log(err);
