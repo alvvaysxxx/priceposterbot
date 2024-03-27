@@ -1,0 +1,23 @@
+{
+  "name": "bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon index"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "child_process": "^1.0.2",
+    "express": "^4.18.3",
+    "grammy": "^1.21.1",
+    "mongodb": "^6.5.0",
+    "mongoose": "^8.2.2",
+    "nexpect": "^0.6.0",
+    "node-schedule": "^2.1.1",
+    "nodemon": "^3.1.0",
+    "toad-scheduler": "^3.0.1"
+  }
+}
