@@ -30,6 +30,7 @@ async function run() {
 run().catch(console.dir);
 
 const bot = new Bot(process.argv[2]);
+console.log(process.argv[2]);
 
 async function handleAutoPosting(id, endTime, jobid) {
   try {
