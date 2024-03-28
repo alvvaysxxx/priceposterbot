@@ -189,6 +189,17 @@ bot.on("callback_query:data", async (ctx) => {
         ctx.chat.id,
         ctx.callbackQuery.message.message_id
       );
+      let keyboard = new InlineKeyboard().url(
+        "⬅ В главного бота",
+        `https://t.me/trippleP_bot`
+      );
+      await bot.api.sendMessage(
+        ctx.chat.id,
+        `✔️ Автопостинг успешно начат!\nВы всегда можете остановить его, перейдя в настройки бота в приложении`,
+        {
+          reply_markup: keyboard,
+        }
+      );
       let post = await Post.findById(id);
       post.active = true;
       await post.save();
