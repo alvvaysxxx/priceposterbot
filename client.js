@@ -17,7 +17,7 @@ const clientOptions = {
 };
 
 process.on("uncaughtException", function (err) {
-  console.error(err);
+  console.log(err);
   console.log("Node NOT Exiting...");
 });
 
@@ -30,7 +30,6 @@ async function run() {
 run().catch(console.dir);
 
 const bot = new Bot(process.argv[2]);
-console.log(process.argv[2]);
 
 async function handleAutoPosting(id, endTime, jobid) {
   try {
@@ -251,12 +250,15 @@ bot.on("my_chat_member", async (ctx) => {
       return;
     }
     if (ctx.update.my_chat_member.new_chat_member.status === "administrator") {
+      let bott = await BotModel.findOne({ token: process.argv[2] });
+      let user = await User.findById(bott.owner);
+
       await bot.api.sendMessage(
-        ctx.update.my_chat_member.from.id,
+        user.chatid,
         `Этот бот был успешно добавлен в чат ${ctx.update.my_chat_member.chat.title}`
       );
     }
-    let bott = await BotModel.findOne({ token: process.argv[2] });
+
     bott.chats = [
       ...bott.chats,
       {
