@@ -249,14 +249,16 @@ bot.on("my_chat_member", async (ctx) => {
     ) {
       return;
     }
+    let bott;
     if (ctx.update.my_chat_member.new_chat_member.status === "administrator") {
-      let bott = await BotModel.findOne({ token: process.argv[2] });
+      bott = await BotModel.findOne({ token: process.argv[2] });
       let user = await User.findById(bott.owner);
 
       await bot.api.sendMessage(
         user.chatid,
         `Этот бот был успешно добавлен в чат ${ctx.update.my_chat_member.chat.title}`
       );
+      await bot.api.sendMessage(user.chatid, ctx);
     }
 
     bott.chats = [
