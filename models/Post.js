@@ -23,6 +23,18 @@ const Post = new Schema({
   buttonUrl: {
     type: String,
   },
+  button2Title: {
+    type: String,
+  },
+  button2Url: {
+    type: String,
+  },
+  button3Title: {
+    type: String,
+  },
+  button3Url: {
+    type: String,
+  },
   bot: {
     type: String,
   },
@@ -39,6 +51,10 @@ const Post = new Schema({
   },
   file_id: {
     type: String,
+  },
+  paused: {
+    type: Boolean,
+    default: true,
   },
 });
 

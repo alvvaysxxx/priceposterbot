@@ -44,6 +44,9 @@ async function handleAutoPosting(id, endTime, jobid) {
 
     console.log(id);
     let post = await Post.findById(id);
+    if (post.paused) {
+      return;
+    }
     if (!post) {
       scheduler.stopById(jobid);
       return;
@@ -66,7 +69,21 @@ async function handleAutoPosting(id, endTime, jobid) {
       }
       let keyboard = null;
       if (post.button) {
-        keyboard = new InlineKeyboard().url(post.buttonTitle, post.buttonUrl);
+        if (post.button3Title && post.button2Title && post.buttonTitle) {
+          keyboard = new InlineKeyboard()
+            .url(post.buttonTitle, post.buttonUrl)
+            .url(post.button2Title, post.button2Url)
+            .row()
+            .url(post.button3Title, post.button3Url);
+        }
+        if (post.button2Title && post.buttonTitle && !post.button3Title) {
+          keyboard = new InlineKeyboard()
+            .url(post.buttonTitle, post.buttonUrl)
+            .url(post.button2Title, post.button2Url);
+        }
+        if (!post.button3Title && !post.button2Title && post.buttonTitle) {
+          keyboard = new InlineKeyboard().url(post.buttonTitle, post.buttonUrl);
+        }
       }
       if (post.forward) {
         console.log(chats[i].id, post.from_chatid, parseInt(post.msg));
@@ -139,7 +156,24 @@ bot.on("message", async (ctx) => {
         await bot.api.sendMessage(ctx.chat.id, `Предпросмотр сообщения:`);
         let keyboard = null;
         if (post.button) {
-          keyboard = new InlineKeyboard().url(post.buttonTitle, post.buttonUrl);
+          if (post.button3Title && post.button2Title && post.buttonTitle) {
+            keyboard = new InlineKeyboard()
+              .url(post.buttonTitle, post.buttonUrl)
+              .url(post.button2Title, post.button2Url)
+              .row()
+              .url(post.button3Title, post.button3Url);
+          }
+          if (post.button2Title && post.buttonTitle && !post.button3Title) {
+            keyboard = new InlineKeyboard()
+              .url(post.buttonTitle, post.buttonUrl)
+              .url(post.button2Title, post.button2Url);
+          }
+          if (!post.button3Title && !post.button2Title && post.buttonTitle) {
+            keyboard = new InlineKeyboard().url(
+              post.buttonTitle,
+              post.buttonUrl
+            );
+          }
         }
         if (ctx.message.photo) {
           await bot.api.sendPhoto(
