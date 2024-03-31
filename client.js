@@ -258,7 +258,6 @@ bot.on("my_chat_member", async (ctx) => {
         user.chatid,
         `Этот бот был успешно добавлен в чат ${ctx.update.my_chat_member.chat.title}`
       );
-      await bot.api.sendMessage(user.chatid, ctx);
     }
 
     bott.chats = [
