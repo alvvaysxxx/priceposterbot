@@ -17,7 +17,7 @@ const clientOptions = {
 };
 
 process.on("uncaughtException", function (err) {
-  console.log(err);
+  console.log(err, process.argv[2]);
   console.log("Node NOT Exiting...");
 });
 
@@ -260,6 +260,7 @@ bot.on("callback_query:data", async (ctx) => {
         }
       );
       scheduler.addSimpleIntervalJob(job);
+      console.log("starting posting");
       handleAutoPosting(post.id, endTime, maxId);
     }
     if (ctx.callbackQuery.data.includes("no_posting")) {
