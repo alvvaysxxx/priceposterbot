@@ -68,10 +68,11 @@ async function handleAutoPosting(id, endTime, jobid) {
         }
       }
 
-      postbot.sentMessages.push({ date: Date.now(), chat: chats[i] });
+      bott.sentMessages.push({ date: Date.now(), chat: chats[i] });
       post.sentMessages.push({ date: Date.now(), chat: chats[i] });
 
-      await postbot.save();
+      await bott.save();
+      await post.save();
       let keyboard = null;
       if (post.button) {
         if (post.button3Title && post.button2Title && post.buttonTitle) {
@@ -113,7 +114,7 @@ async function handleAutoPosting(id, endTime, jobid) {
       }
     }
   } catch (err) {
-    console.error(err);
+    console.log(err);
   }
 }
 
