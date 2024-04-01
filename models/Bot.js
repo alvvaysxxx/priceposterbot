@@ -25,6 +25,10 @@ const Bot = new Schema({
     type: Array,
     default: [],
   },
+  sentMessages: {
+    type: Array,
+    default: [], // [{date, chat}, {date, chat}, ...]
+  },
 });
 
 module.exports = model("bot", Bot);

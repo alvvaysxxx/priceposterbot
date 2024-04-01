@@ -54,7 +54,11 @@ const Post = new Schema({
   },
   paused: {
     type: Boolean,
-    default: true,
+    default: false,
+  },
+  sentMessages: {
+    type: Array,
+    default: [], // {date, chat}
   },
 });
 
