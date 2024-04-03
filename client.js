@@ -9,8 +9,12 @@ const scheduler = new ToadScheduler();
 
 let maxId = 0;
 
-const uri =
-  "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+// ! Production
+ const uri = "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+
+// ! Development
+//const uri =
+//  "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 const clientOptions = {
   serverApi: { version: "1", strict: true, deprecationErrors: true },
@@ -109,6 +113,7 @@ async function handleAutoPosting(id, endTime, jobid) {
           await postbot.api.sendMessage(chats[i].id, post.msg, {
             parse_mode: "HTML",
             reply_markup: keyboard,
+            link_preview_options: { is_disabled: true },
           });
         }
       }
@@ -117,6 +122,55 @@ async function handleAutoPosting(id, endTime, jobid) {
     console.log(err);
   }
 }
+
+const applyFormatting = (text, entities) => {
+  let formattedText = text;
+
+  // Сортировка сущностей по убыванию для корректной обработки перекрывающихся сущностей
+  entities.sort((a, b) => b.offset - a.offset);
+
+  // Обработка каждой сущности форматирования
+  entities.forEach((entity) => {
+    const { offset, length, type, url } = entity;
+    let startTag, endTag;
+    switch (type) {
+      case "bold":
+        startTag = "<b>";
+        endTag = "</b>";
+        break;
+      case "italic":
+        startTag = "<i>";
+        endTag = "</i>";
+        break;
+      case "code":
+        startTag = "<code>";
+        endTag = "</code>";
+        break;
+      case "text_link":
+        startTag = `<a href="${url}">`;
+        endTag = "</a>";
+        break;
+      case "strikethrough":
+        startTag = "<s>";
+        endTag = "</s>";
+        break;
+      default:
+        startTag = "";
+        endTag = "";
+        break;
+    }
+
+    // Вставка тегов форматирования в текст
+    formattedText =
+      formattedText.slice(0, offset) +
+      startTag +
+      formattedText.slice(offset, offset + length) +
+      endTag +
+      formattedText.slice(offset + length);
+  });
+
+  return formattedText;
+};
 
 bot.on("message", async (ctx) => {
   try {
@@ -138,6 +192,7 @@ bot.on("message", async (ctx) => {
         )[1];
       let post = await Post.findById(id);
       let postbot = new Bot(post.bot);
+      console.log(ctx.message);
       if (post.forward) {
         await postbot.api.sendMessage(ctx.chat.id, "Предпросмотр сообщения:");
         await postbot.api.forwardMessage(
@@ -195,10 +250,15 @@ bot.on("message", async (ctx) => {
             ctx.message.photo[ctx.message.photo.length - 1].file_id;
           post.msg = ctx.message.caption;
         } else {
-          await bot.api.sendMessage(ctx.chat.id, ctx.message.text, {
-            parse_mode: "HTML",
-            reply_markup: keyboard,
-          });
+          await bot.api.sendMessage(
+            ctx.chat.id,
+            applyFormatting(ctx.message.text, ctx.message.entities),
+            {
+              parse_mode: "HTML",
+              reply_markup: keyboard,
+              link_preview_options: { is_disabled: true },
+            }
+          );
         }
         keyboard = new InlineKeyboard()
           .text("✅ Начать", `start_posting|${post._id}`)
@@ -209,9 +269,10 @@ bot.on("message", async (ctx) => {
           {
             parse_mode: "HTML",
             reply_markup: keyboard,
+            link_preview_options: { is_disabled: true },
           }
         );
-        post.msg = ctx.message.text;
+        post.msg = applyFormatting(ctx.message.text, ctx.message.entities);
         await post.save();
       }
     }

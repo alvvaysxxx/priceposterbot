@@ -14,6 +14,10 @@ const User = new Schema({
   ActiveUntil: {
     type: Date,
   },
+  subscribed: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 module.exports = model("user", User);
