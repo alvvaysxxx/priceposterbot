@@ -10,7 +10,7 @@ const scheduler = new ToadScheduler();
 let maxId = 0;
 
 // ! Production
- const uri = "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const uri = "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 // ! Development
 //const uri =
@@ -123,53 +123,81 @@ async function handleAutoPosting(id, endTime, jobid) {
   }
 }
 
-const applyFormatting = (text, entities) => {
-  let formattedText = text;
+const parseTelegramMessage = (telegramData) => {
+  const text = telegramData.message.text || telegramData.message.caption;
+  const entities =
+    telegramData.message.entities || telegramData.message.caption_entities;
 
-  // Сортировка сущностей по убыванию для корректной обработки перекрывающихся сущностей
-  entities.sort((a, b) => b.offset - a.offset);
+  if (!entities) {
+    return text;
+  }
 
-  // Обработка каждой сущности форматирования
+  let tags = [];
+
   entities.forEach((entity) => {
-    const { offset, length, type, url } = entity;
-    let startTag, endTag;
-    switch (type) {
-      case "bold":
-        startTag = "<b>";
-        endTag = "</b>";
-        break;
-      case "italic":
-        startTag = "<i>";
-        endTag = "</i>";
-        break;
-      case "code":
-        startTag = "<code>";
-        endTag = "</code>";
-        break;
-      case "text_link":
-        startTag = `<a href="${url}">`;
-        endTag = "</a>";
-        break;
-      case "strikethrough":
-        startTag = "<s>";
-        endTag = "</s>";
-        break;
-      default:
-        startTag = "";
-        endTag = "";
-        break;
-    }
+    const startTag = getTag(entity, text);
+    let searchTag = tags.filter((tag) => tag.index === entity.offset);
+    if (searchTag.length > 0) searchTag[0].tag += startTag;
+    else
+      tags.push({
+        index: entity.offset,
+        tag: startTag,
+      });
 
-    // Вставка тегов форматирования в текст
-    formattedText =
-      formattedText.slice(0, offset) +
-      startTag +
-      formattedText.slice(offset, offset + length) +
-      endTag +
-      formattedText.slice(offset + length);
+    const closeTag =
+      startTag.indexOf("<a ") === 0 ? "</a>" : "</" + startTag.slice(1);
+    searchTag = tags.filter(
+      (tag) => tag.index === entity.offset + entity.length
+    );
+    if (searchTag.length > 0) searchTag[0].tag = closeTag + searchTag[0].tag;
+    else
+      tags.push({
+        index: entity.offset + entity.length,
+        tag: closeTag,
+      });
   });
+  let html = "";
+  for (let i = 0; i < text.length; i++) {
+    const tag = tags.filter((tag) => tag.index === i);
+    tags = tags.filter((tag) => tag.index !== i);
+    if (tag.length > 0) html += tag[0].tag;
+    html += text[i];
+  }
+  if (tags.length > 0) html += tags[0].tag;
 
-  return formattedText;
+  return html;
+};
+
+const getTag = (entity, text) => {
+  const entityText = text.slice(entity.offset, entity.offset + entity.length);
+
+  switch (entity.type) {
+    case "bold":
+      return `<strong>`;
+    case "text_link":
+      return `<a href="${entity.url}" target="_blank">`;
+    case "url":
+      return `<a href="${entityText}" target="_blank">`;
+    case "italic":
+      return `<em>`;
+    case "code":
+      return `<code>`;
+    case "strikethrough":
+      return `<s>`;
+    case "underline":
+      return `<u>`;
+    case "pre":
+      return `<pre>`;
+    case "mention":
+      return `<a href="https://t.me/${entityText.replace(
+        "@",
+        ""
+      )}" target="_blank">`;
+    case "email":
+      return `<a href="mailto:${entityText}">`;
+    case "phone_number":
+      return `<a href="tel:${entityText}">`;
+  }
 };
 
 bot.on("message", async (ctx) => {
@@ -241,24 +269,20 @@ bot.on("message", async (ctx) => {
             ctx.chat.id,
             ctx.message.photo[ctx.message.photo.length - 1].file_id,
             {
-              caption: ctx.message.caption,
+              caption: parseTelegramMessage(ctx),
               parse_mode: "HTML",
               reply_markup: keyboard,
             }
           );
           post.file_id =
             ctx.message.photo[ctx.message.photo.length - 1].file_id;
-          post.msg = ctx.message.caption;
+          post.msg = parseTelegramMessage(ctx);
         } else {
-          await bot.api.sendMessage(
-            ctx.chat.id,
-            applyFormatting(ctx.message.text, ctx.message.entities),
-            {
-              parse_mode: "HTML",
-              reply_markup: keyboard,
-              link_preview_options: { is_disabled: true },
-            }
-          );
+          await bot.api.sendMessage(ctx.chat.id, parseTelegramMessage(ctx), {
+            parse_mode: "HTML",
+            reply_markup: keyboard,
+            link_preview_options: { is_disabled: true },
+          });
         }
         keyboard = new InlineKeyboard()
           .text("✅ Начать", `start_posting|${post._id}`)
@@ -272,7 +296,7 @@ bot.on("message", async (ctx) => {
             link_preview_options: { is_disabled: true },
           }
         );
-        post.msg = applyFormatting(ctx.message.text, ctx.message.entities);
+        post.msg = parseTelegramMessage(ctx);
         await post.save();
       }
     }
