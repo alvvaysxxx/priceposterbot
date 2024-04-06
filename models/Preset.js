@@ -1,7 +1,7 @@
 const { model, Schema } = require("mongoose");
 const mongoose = require("mongoose");
 
-const Post = new Schema({
+const Preset = new Schema({
   duration: {
     type: mongoose.Types.Decimal128,
   },
@@ -59,10 +59,6 @@ const Post = new Schema({
     type: Boolean,
     default: false,
   },
-  sentMessages: {
-    type: Array,
-    default: [], // {date, chat}
-  },
 });
 
-module.exports = model("post", Post);
+module.exports = model("preset", Preset);

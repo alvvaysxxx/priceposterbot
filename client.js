@@ -3,6 +3,7 @@ const { Bot, InlineKeyboard } = require("grammy");
 const BotModel = require("./models/Bot");
 const User = require("./models/User");
 const Post = require("./models/Post");
+const Preset = require("./models/Preset");
 const schedule = require("node-schedule");
 const { ToadScheduler, SimpleIntervalJob, Task } = require("toad-scheduler");
 const scheduler = new ToadScheduler();
@@ -240,6 +241,7 @@ bot.on("message", async (ctx) => {
           }
         );
         post.msg = ctx.message.message_id;
+        post.originalMsg = ctx.message.text;
         await post.save();
       } else {
         await bot.api.sendMessage(ctx.chat.id, `Предпросмотр сообщения:`);
@@ -277,6 +279,7 @@ bot.on("message", async (ctx) => {
           post.file_id =
             ctx.message.photo[ctx.message.photo.length - 1].file_id;
           post.msg = parseTelegramMessage(ctx);
+          post.originalMsg = ctx.message.caption;
         } else {
           await bot.api.sendMessage(ctx.chat.id, parseTelegramMessage(ctx), {
             parse_mode: "HTML",
@@ -297,6 +300,7 @@ bot.on("message", async (ctx) => {
           }
         );
         post.msg = parseTelegramMessage(ctx);
+        post.originalMsg = ctx.message.text;
         await post.save();
       }
     }
@@ -307,16 +311,19 @@ bot.on("message", async (ctx) => {
 
 bot.on("callback_query:data", async (ctx) => {
   try {
-    if (ctx.callbackQuery.data.includes("start_posting")) {
+    if (
+      ctx.callbackQuery.data.includes("start_posting") &&
+      !ctx.callbackQuery.data.includes("start_posting_preset")
+    ) {
       const id = ctx.callbackQuery.data.split("|")[1];
+      let post = await Post.findById(id);
       await bot.api.deleteMessage(
         ctx.chat.id,
         ctx.callbackQuery.message.message_id
       );
-      let keyboard = new InlineKeyboard().url(
-        "⬅ В главного бота",
-        `https://t.me/trippleP_bot`
-      );
+      let keyboard = new InlineKeyboard()
+        .text("➕ Добавить в шаблоны", `addpreset|${post._id}`)
+        .url("⬅ В главного бота", `https://t.me/trippleP_bot`);
       await bot.api.sendMessage(
         ctx.chat.id,
         `✔️ Автопостинг успешно начат!\nВы всегда можете остановить его, перейдя в настройки бота в приложении`,
@@ -324,7 +331,6 @@ bot.on("callback_query:data", async (ctx) => {
           reply_markup: keyboard,
         }
       );
-      let post = await Post.findById(id);
       post.active = true;
       await post.save();
       // Configure the scheduling task
@@ -348,7 +354,10 @@ bot.on("callback_query:data", async (ctx) => {
       console.log("starting posting");
       handleAutoPosting(post.id, endTime, maxId);
     }
-    if (ctx.callbackQuery.data.includes("no_posting")) {
+    if (
+      ctx.callbackQuery.data.includes("no_posting") &&
+      !ctx.callbackQuery.data.includes("no_posting_preset")
+    ) {
       const id = ctx.callbackQuery.data.split("|")[1];
       await Post.findByIdAndDelete(id).exec();
       await bot.api.deleteMessage(
@@ -357,6 +366,109 @@ bot.on("callback_query:data", async (ctx) => {
       );
     }
     if (ctx.callbackQuery.data.includes("cancel")) {
+      await bot.api.deleteMessage(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id
+      );
+    }
+    if (ctx.callbackQuery.data.includes("addpreset")) {
+      let data = await Post.findById(ctx.callbackQuery.data.split("|")[1]);
+      let newPreset = new Preset({
+        duration: data.duration,
+        periodicity: data.periodicity,
+        forward: data.forward,
+        msg: data.msg,
+        originalMsg: data.originalMsg,
+        button: data.button,
+        buttonTitle: data.buttonTitle,
+        buttonUrl: data.buttonUrl,
+        button2Title: data.button2Title,
+        button2Url: data.button2Url,
+        button3Title: data.button3Title,
+        button3Url: data.button3Url,
+        bot: data.bot,
+        excludedChats: data.excludedChats,
+        active: data.active,
+        from_chatid: data.from_chatid,
+        file_id: data.file_id,
+        paused: data.paused,
+        sendMessages: data.sentMessages,
+      });
+      await newPreset.save();
+      await bot.api.deleteMessage(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id
+      );
+      await bot.api.sendMessage(
+        ctx.chat.id,
+        "✅ Шаблон успешно добавлен. Просмотреть его вы сможете в меню 'Пресеты' в панели этого бота"
+      );
+    }
+
+    if (ctx.callbackQuery.data.includes("start_posting_preset")) {
+      const id = ctx.callbackQuery.data.split("|")[1];
+      let preset = await Preset.findById(id);
+      let post = new Post({
+        duration: preset.duration,
+        periodicity: preset.periodicity,
+        forward: preset.forward,
+        msg: preset.msg,
+        originalMsg: preset.originalMsg,
+        button: preset.button,
+        buttonTitle: preset.buttonTitle,
+        buttonUrl: preset.buttonUrl,
+        button2Title: preset.button2Title,
+        button2Url: preset.button2Url,
+        button3Title: preset.button3Title,
+        button3Url: preset.button3Url,
+        bot: preset.bot,
+        excludedChats: preset.excludedChats,
+        active: true,
+        from_chatid: preset.from_chatid,
+        file_id: preset.file_id,
+        paused: preset.paused,
+        sendMessages: preset.sentMessages,
+      });
+      await bot.api.deleteMessage(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id
+      );
+      let keyboard = new InlineKeyboard().url(
+        "⬅ В главного бота",
+        `https://t.me/trippleP_bot`
+      );
+      await bot.api.sendMessage(
+        ctx.chat.id,
+        `✔️ Автопостинг успешно начат!\nВы всегда можете остановить его, перейдя в настройки бота в приложении`,
+        {
+          reply_markup: keyboard,
+        }
+      );
+      post.active = true;
+      await post.save();
+      // Configure the scheduling task
+      const startTime = new Date();
+      const endTime = new Date(
+        startTime.getTime() + post.duration * 60 * 60 * 1000
+      ); // duration hours after start
+      ++maxId;
+      const task = new Task("bot task", () => {
+        console.log("hey");
+        handleAutoPosting(post.id, endTime, maxId);
+      });
+      const job = new SimpleIntervalJob(
+        { seconds: post.periodicity * 60 * 60 },
+        task,
+        {
+          id: maxId,
+        }
+      );
+      scheduler.addSimpleIntervalJob(job);
+      console.log("starting posting");
+      handleAutoPosting(post.id, endTime, maxId);
+    }
+
+    if (ctx.callbackQuery.data.includes("no_posting_preset")) {
       await bot.api.deleteMessage(
         ctx.chat.id,
         ctx.callbackQuery.message.message_id
