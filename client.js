@@ -11,11 +11,11 @@ const scheduler = new ToadScheduler();
 let maxId = 0;
 
 // ! Production
-const uri = "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const uri =
+  "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 // ! Development
-//const uri =
-//  "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+//const uri = "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 const clientOptions = {
   serverApi: { version: "1", strict: true, deprecationErrors: true },
@@ -198,6 +198,8 @@ const getTag = (entity, text) => {
       return `<a href="mailto:${entityText}">`;
     case "phone_number":
       return `<a href="tel:${entityText}">`;
+    case "blockquote":
+      return `<blockquote>`;
   }
 };
 
