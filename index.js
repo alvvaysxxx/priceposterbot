@@ -81,10 +81,9 @@ async function handleClientBots() {
     let dbBots = await BotModel.find();
     if (bots.length == 0) {
       bots = dbBots;
-      console.log("assigned");
+      console.log("Обновление списка ботов");
     } else {
       if (bots.length == dbBots.length) {
-        console.log("новых ботов не найдено");
         return;
       }
       if (bots.length > dbBots.length) {
@@ -99,12 +98,12 @@ async function handleClientBots() {
 
       // Обработка события вывода данных из процесса
       childProcess.stdout.on("data", (data) => {
-        console.log(`Данные из процесса: ${data}`);
+        console.log(`[${new Date().toLocaleTimeString()}]: ${data}`);
       });
 
       // Обработка события ошибок
       childProcess.on("error", (error) => {
-        console.error(`Ошибка запуска процесса: ${error.message}`);
+        console.error(`[${new Date().toLocaleTimeString()}]: ${error.message}`);
       });
 
       // Обработка события завершения процесса

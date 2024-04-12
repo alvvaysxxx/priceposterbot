@@ -39,15 +39,13 @@ const bot = new Bot(process.argv[2]);
 async function handleAutoPosting(id, endTime, jobid) {
   try {
     let now = new Date();
-    console.log(now.getTime(), endTime);
     if (now.getTime() >= endTime) {
-      console.log("should be deleted");
+      console.log("Пост должен быть удален (длительность)");
       scheduler.stopById(jobid);
       await Post.findByIdAndDelete(id).exec();
       return;
     }
 
-    console.log(id);
     let post = await Post.findById(id);
     if (post.paused) {
       return;
@@ -73,50 +71,60 @@ async function handleAutoPosting(id, endTime, jobid) {
         }
       }
 
-      bott.sentMessages.push({ date: Date.now(), chat: chats[i] });
-      post.sentMessages.push({ date: Date.now(), chat: chats[i] });
+      try {
+        console.log(`Отправляем пост ${post._id} в ${chats[i].title}`);
 
-      await bott.save();
-      await post.save();
-      let keyboard = null;
-      if (post.button) {
-        if (post.button3Title && post.button2Title && post.buttonTitle) {
-          keyboard = new InlineKeyboard()
-            .url(post.buttonTitle, post.buttonUrl)
-            .url(post.button2Title, post.button2Url)
-            .row()
-            .url(post.button3Title, post.button3Url);
+        bott.sentMessages.push({ date: Date.now(), chat: chats[i] });
+        post.sentMessages.push({ date: Date.now(), chat: chats[i] });
+
+        await bott.save();
+        await post.save();
+        let keyboard = null;
+        if (post.button) {
+          if (post.button3Title && post.button2Title && post.buttonTitle) {
+            keyboard = new InlineKeyboard()
+              .url(post.buttonTitle, post.buttonUrl)
+              .url(post.button2Title, post.button2Url)
+              .row()
+              .url(post.button3Title, post.button3Url);
+          }
+          if (post.button2Title && post.buttonTitle && !post.button3Title) {
+            keyboard = new InlineKeyboard()
+              .url(post.buttonTitle, post.buttonUrl)
+              .url(post.button2Title, post.button2Url);
+          }
+          if (!post.button3Title && !post.button2Title && post.buttonTitle) {
+            keyboard = new InlineKeyboard().url(
+              post.buttonTitle,
+              post.buttonUrl
+            );
+          }
         }
-        if (post.button2Title && post.buttonTitle && !post.button3Title) {
-          keyboard = new InlineKeyboard()
-            .url(post.buttonTitle, post.buttonUrl)
-            .url(post.button2Title, post.button2Url);
-        }
-        if (!post.button3Title && !post.button2Title && post.buttonTitle) {
-          keyboard = new InlineKeyboard().url(post.buttonTitle, post.buttonUrl);
-        }
-      }
-      if (post.forward) {
-        console.log(chats[i].id, post.from_chatid, parseInt(post.msg));
-        await postbot.api.forwardMessage(
-          chats[i].id,
-          parseInt(post.from_chatid),
-          parseInt(post.msg)
-        );
-      } else {
-        console.log(post.file_id);
-        if (post.file_id) {
-          await postbot.api.sendPhoto(chats[i].id, post.file_id, {
-            caption: post.msg,
-            reply_markup: keyboard,
-          });
+        if (post.forward) {
+          await postbot.api.forwardMessage(
+            chats[i].id,
+            parseInt(post.from_chatid),
+            parseInt(post.msg)
+          );
         } else {
-          await postbot.api.sendMessage(chats[i].id, post.msg, {
-            parse_mode: "HTML",
-            reply_markup: keyboard,
-            link_preview_options: { is_disabled: true },
-          });
+          if (post.file_id) {
+            await postbot.api.sendPhoto(chats[i].id, post.file_id, {
+              caption: post.msg,
+              reply_markup: keyboard,
+            });
+          } else {
+            await postbot.api.sendMessage(chats[i].id, post.msg, {
+              parse_mode: "HTML",
+              reply_markup: keyboard,
+              link_preview_options: { is_disabled: true },
+            });
+          }
         }
+        console.log(`Пост отправлен`);
+      } catch (err) {
+        console.log(err);
+        // Continue to the next iteration
+        continue;
       }
     }
   } catch (err) {
