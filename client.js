@@ -8,6 +8,8 @@ const schedule = require("node-schedule");
 const { ToadScheduler, SimpleIntervalJob, Task } = require("toad-scheduler");
 const scheduler = new ToadScheduler();
 
+const enterMessage = require("./handlers/enterMessage");
+
 let maxId = 0;
 
 // ! Production
@@ -15,7 +17,8 @@ const uri =
   "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 // ! Development
-//const uri = "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+//const uri =
+//  "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 const clientOptions = {
   serverApi: { version: "1", strict: true, deprecationErrors: true },
@@ -38,6 +41,7 @@ const bot = new Bot(process.argv[2]);
 
 async function handleAutoPosting(id, endTime, jobid) {
   try {
+    console.log("отправляем пост");
     let now = new Date();
     if (now.getTime() >= endTime) {
       console.log("Пост должен быть удален (длительность)");
@@ -47,17 +51,21 @@ async function handleAutoPosting(id, endTime, jobid) {
     }
 
     let post = await Post.findById(id);
-    if (post.paused) {
-      return;
-    }
     if (!post) {
       scheduler.stopById(jobid);
+      console.log("пост не найден");
+      return;
+    }
+    if (post.paused) {
+      console.log("пост на паузе");
       return;
     }
     if (!post.active) {
       scheduler.stopById(jobid);
+      console.log("пост неактив");
       return;
     }
+
     let bott = await BotModel.findOne({ token: post.bot });
 
     let postbot = new Bot(bott.token);
@@ -72,8 +80,27 @@ async function handleAutoPosting(id, endTime, jobid) {
       }
 
       try {
-        console.log(`Отправляем пост ${post._id} в ${chats[i].title}`);
+        console.log(post.smartSend);
+        if (post.smartSend) {
+          if (!bott.chats[i].hasOwnProperty("messagesBetweenPosts")) {
+            bott.chats[i].messagesBetweenPosts = 20;
+          }
+          if (bott.chats[i].messagesBetweenPosts < 20) {
+            console.log("не подходит smartsend");
+            ++i;
+          } else {
+            console.log(
+              "подходит smartSend",
+              bott.chats[i].messagesBetweenPosts < 20
+            );
+          }
+        }
 
+        let pinned = await postbot.api.getChat(chats[i].id);
+
+        console.log(`Отправляем пост ${post._id} в ${chats[i].title}`);
+        bott.chats[i].messagesBetweenPosts = 0;
+        bott.markModified("chats");
         bott.sentMessages.push({ date: Date.now(), chat: chats[i] });
         post.sentMessages.push({ date: Date.now(), chat: chats[i] });
 
@@ -100,25 +127,43 @@ async function handleAutoPosting(id, endTime, jobid) {
             );
           }
         }
+
+        let message;
+
         if (post.forward) {
-          await postbot.api.forwardMessage(
+          message = await postbot.api.forwardMessage(
             chats[i].id,
             parseInt(post.from_chatid),
             parseInt(post.msg)
           );
         } else {
           if (post.file_id) {
-            await postbot.api.sendPhoto(chats[i].id, post.file_id, {
+            message = await postbot.api.sendPhoto(chats[i].id, post.file_id, {
               caption: post.msg,
               reply_markup: keyboard,
             });
           } else {
-            await postbot.api.sendMessage(chats[i].id, post.msg, {
+            message = await postbot.api.sendMessage(chats[i].id, post.msg, {
               parse_mode: "HTML",
               reply_markup: keyboard,
               link_preview_options: { is_disabled: true },
             });
           }
+        }
+        if (
+          (pinned.pinned_message &&
+            Math.floor(Date.now() / 1000) - pinned.pinned_message.date >
+              3600) ||
+          !pinned.pinned_message
+        ) {
+          await postbot.api.pinChatMessage(chats[i].id, message.message_id);
+          console.log(
+            Math.floor(Date.now() / 1000) - pinned.pinned_message.date
+          );
+        } else {
+          console.log(
+            Math.floor(Date.now() / 1000) - pinned.pinned_message.date
+          );
         }
         console.log(`Пост отправлен`);
       } catch (err) {
@@ -132,187 +177,23 @@ async function handleAutoPosting(id, endTime, jobid) {
   }
 }
 
-const parseTelegramMessage = (telegramData) => {
-  const text = telegramData.message.text || telegramData.message.caption;
-  const entities =
-    telegramData.message.entities || telegramData.message.caption_entities;
-
-  if (!entities) {
-    return text;
-  }
-
-  let tags = [];
-
-  entities.forEach((entity) => {
-    const startTag = getTag(entity, text);
-    let searchTag = tags.filter((tag) => tag.index === entity.offset);
-    if (searchTag.length > 0) searchTag[0].tag += startTag;
-    else
-      tags.push({
-        index: entity.offset,
-        tag: startTag,
-      });
-
-    const closeTag =
-      startTag.indexOf("<a ") === 0 ? "</a>" : "</" + startTag.slice(1);
-    searchTag = tags.filter(
-      (tag) => tag.index === entity.offset + entity.length
-    );
-    if (searchTag.length > 0) searchTag[0].tag = closeTag + searchTag[0].tag;
-    else
-      tags.push({
-        index: entity.offset + entity.length,
-        tag: closeTag,
-      });
-  });
-  let html = "";
-  for (let i = 0; i < text.length; i++) {
-    const tag = tags.filter((tag) => tag.index === i);
-    tags = tags.filter((tag) => tag.index !== i);
-    if (tag.length > 0) html += tag[0].tag;
-    html += text[i];
-  }
-  if (tags.length > 0) html += tags[0].tag;
-
-  return html;
-};
-
-const getTag = (entity, text) => {
-  const entityText = text.slice(entity.offset, entity.offset + entity.length);
-
-  switch (entity.type) {
-    case "bold":
-      return `<strong>`;
-    case "text_link":
-      return `<a href="${entity.url}" target="_blank">`;
-    case "url":
-      return `<a href="${entityText}" target="_blank">`;
-    case "italic":
-      return `<em>`;
-    case "code":
-      return `<code>`;
-    case "strikethrough":
-      return `<s>`;
-    case "underline":
-      return `<u>`;
-    case "pre":
-      return `<pre>`;
-    case "mention":
-      return `<a href="https://t.me/${entityText.replace(
-        "@",
-        ""
-      )}" target="_blank">`;
-    case "email":
-      return `<a href="mailto:${entityText}">`;
-    case "phone_number":
-      return `<a href="tel:${entityText}">`;
-    case "blockquote":
-      return `<blockquote>`;
-  }
-};
-
 bot.on("message", async (ctx) => {
   try {
-    if (ctx.chat.type != "private") {
-      return;
-    }
-
-    // Проверка на существование reply_to_message и reply_markup в update.message
-    if (
-      ctx.message.reply_to_message !== undefined &&
-      ctx.message.reply_to_message.reply_markup !== undefined &&
-      ctx.message.reply_to_message.reply_markup.inline_keyboard[0][0].callback_data.includes(
-        "cancel"
-      )
-    ) {
-      let id =
-        ctx.message.reply_to_message.reply_markup.inline_keyboard[0][0].callback_data.split(
-          "|"
-        )[1];
-      let post = await Post.findById(id);
-      let postbot = new Bot(post.bot);
-      console.log(ctx.message);
-      if (post.forward) {
-        await postbot.api.sendMessage(ctx.chat.id, "Предпросмотр сообщения:");
-        await postbot.api.forwardMessage(
-          ctx.chat.id,
-          ctx.chat.id,
-          ctx.message.message_id
-        );
-        let keyboard = new InlineKeyboard()
-          .text("✅ Начать", `start_posting|${post._id}`)
-          .text("⛔ Отменить", `no_posting|${post._id}`);
-        await bot.api.sendMessage(
-          ctx.chat.id,
-          `Вы уверены, что хотите запустить этот автопостинг с текущими настройками?\n\nТекущие настройки:\n\nПродолжительность : ${post.duration} часов\nПериодичность: ${post.periodicity} часов`,
-          {
-            parse_mode: "HTML",
-            reply_markup: keyboard,
+    enterMessage(bot, ctx, "new");
+    if (ctx.chat.type == "group" || ctx.chat.type == "supergroup") {
+      let title = ctx.chat.title;
+      let bott = await BotModel.findOne({ token: process.argv[2] });
+      for (let i = 0; i < bott.chats.length; i++) {
+        if (bott.chats[i].title == title) {
+          if (!bott.chats[i].hasOwnProperty("messagesBetweenPosts")) {
+            bott.chats[i].messagesBetweenPosts = 1;
           }
-        );
-        post.msg = ctx.message.message_id;
-        post.originalMsg = ctx.message.text;
-        await post.save();
-      } else {
-        await bot.api.sendMessage(ctx.chat.id, `Предпросмотр сообщения:`);
-        let keyboard = null;
-        if (post.button) {
-          if (post.button3Title && post.button2Title && post.buttonTitle) {
-            keyboard = new InlineKeyboard()
-              .url(post.buttonTitle, post.buttonUrl)
-              .url(post.button2Title, post.button2Url)
-              .row()
-              .url(post.button3Title, post.button3Url);
-          }
-          if (post.button2Title && post.buttonTitle && !post.button3Title) {
-            keyboard = new InlineKeyboard()
-              .url(post.buttonTitle, post.buttonUrl)
-              .url(post.button2Title, post.button2Url);
-          }
-          if (!post.button3Title && !post.button2Title && post.buttonTitle) {
-            keyboard = new InlineKeyboard().url(
-              post.buttonTitle,
-              post.buttonUrl
-            );
-          }
+          bott.chats[i].messagesBetweenPosts += 1;
         }
-        if (ctx.message.photo) {
-          await bot.api.sendPhoto(
-            ctx.chat.id,
-            ctx.message.photo[ctx.message.photo.length - 1].file_id,
-            {
-              caption: parseTelegramMessage(ctx),
-              parse_mode: "HTML",
-              reply_markup: keyboard,
-            }
-          );
-          post.file_id =
-            ctx.message.photo[ctx.message.photo.length - 1].file_id;
-          post.msg = parseTelegramMessage(ctx);
-          post.originalMsg = ctx.message.caption;
-        } else {
-          await bot.api.sendMessage(ctx.chat.id, parseTelegramMessage(ctx), {
-            parse_mode: "HTML",
-            reply_markup: keyboard,
-            link_preview_options: { is_disabled: true },
-          });
-        }
-        keyboard = new InlineKeyboard()
-          .text("✅ Начать", `start_posting|${post._id}`)
-          .text("⛔ Отменить", `no_posting|${post._id}`);
-        await bot.api.sendMessage(
-          ctx.chat.id,
-          `Вы уверены, что хотите запустить этот автопостинг с текущими настройками?\n\nТекущие настройки:\n\n<b>Продолжительность:</b> ${post.duration} часов\n<b>Периодичность:</b> ${post.periodicity} часов`,
-          {
-            parse_mode: "HTML",
-            reply_markup: keyboard,
-            link_preview_options: { is_disabled: true },
-          }
-        );
-        post.msg = parseTelegramMessage(ctx);
-        post.originalMsg = ctx.message.text;
-        await post.save();
       }
+      bott.markModified("chats");
+      console.log(bott.chats);
+      await bott.save();
     }
   } catch (err) {
     console.log(err);
@@ -354,7 +235,7 @@ bot.on("callback_query:data", async (ctx) => {
         handleAutoPosting(post.id, endTime, maxId);
       });
       const job = new SimpleIntervalJob(
-        { seconds: post.periodicity * 60 * 60 },
+        { seconds: 60 /*post.periodicity * 60 * 60*/ },
         task,
         {
           id: maxId,
@@ -374,8 +255,19 @@ bot.on("callback_query:data", async (ctx) => {
         ctx.chat.id,
         ctx.callbackQuery.message.message_id
       );
+      await bot.api.deleteMessage(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id - 1
+      );
+      await bot.api.deleteMessage(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id - 2
+      );
     }
-    if (ctx.callbackQuery.data.includes("cancel")) {
+    if (
+      ctx.callbackQuery.data.includes("cancel") &&
+      !ctx.callbackQuery.data.includes("canceledit")
+    ) {
       await bot.api.deleteMessage(
         ctx.chat.id,
         ctx.callbackQuery.message.message_id
@@ -403,6 +295,7 @@ bot.on("callback_query:data", async (ctx) => {
         file_id: data.file_id,
         paused: data.paused,
         sendMessages: data.sentMessages,
+        smartSend: data.smartSend,
       });
       await newPreset.save();
       await bot.api.deleteMessage(
@@ -413,6 +306,14 @@ bot.on("callback_query:data", async (ctx) => {
         ctx.chat.id,
         "✅ Шаблон успешно добавлен. Просмотреть его вы сможете в меню 'Пресеты' в панели этого бота"
       );
+    }
+
+    if (ctx.callbackQuery.data.includes("canceledit")) {
+      await bot.api.deleteMessage(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id
+      );
+      enterMessage(bot, ctx, "rewrite");
     }
 
     if (ctx.callbackQuery.data.includes("start_posting_preset")) {
@@ -438,6 +339,7 @@ bot.on("callback_query:data", async (ctx) => {
         file_id: preset.file_id,
         paused: preset.paused,
         sendMessages: preset.sentMessages,
+        smartSend: preset.smartSend,
       });
       await bot.api.deleteMessage(
         ctx.chat.id,
@@ -467,7 +369,7 @@ bot.on("callback_query:data", async (ctx) => {
         handleAutoPosting(post.id, endTime, maxId);
       });
       const job = new SimpleIntervalJob(
-        { seconds: post.periodicity * 60 * 60 },
+        { seconds: 60 /*post.periodicity * 60 * 60*/ },
         task,
         {
           id: maxId,
@@ -482,6 +384,37 @@ bot.on("callback_query:data", async (ctx) => {
       await bot.api.deleteMessage(
         ctx.chat.id,
         ctx.callbackQuery.message.message_id
+      );
+    }
+
+    if (ctx.callbackQuery.data.includes("edit_post")) {
+      const id = ctx.callbackQuery.data.split("|")[1];
+      let post = await Post.findById(id);
+
+      const keyboard = new InlineKeyboard().text(
+        "🚫 Отменить",
+        `canceledit|${post._id}`
+      );
+
+      await bot.api.deleteMessage(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id
+      );
+      await bot.api.deleteMessage(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id - 1
+      );
+      await bot.api.deleteMessage(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id - 2
+      );
+      await bot.api.sendMessage(
+        ctx.chat.id,
+        `Вы собираетесь отредактировать пост\nПришлите новый текст, который нужно постить <b>в ответ на это сообщение</b>\nПредыдущий текст будет перезаписан`,
+        {
+          parse_mode: "HTML",
+          reply_markup: keyboard,
+        }
       );
     }
   } catch (err) {
@@ -500,7 +433,33 @@ bot.on("my_chat_member", async (ctx) => {
     let bott;
     if (ctx.update.my_chat_member.new_chat_member.status === "administrator") {
       bott = await BotModel.findOne({ token: process.argv[2] });
+      let { chats } = bott;
+      for (let i = 0; i < chats.length; i++) {
+        if (chats[i].title == ctx.update.my_chat_member.chat.title) {
+          return;
+        }
+      }
+
       let user = await User.findById(bott.owner);
+
+      await bot.api.sendPhoto(ctx.chat.id, "https://i.imgur.com/fNAn9qJ.png", {
+        parse_mode: "HTML",
+        caption: `<a href = "https://t.me/trippleP_bot">Price Poster</a>  - @trippleP_bot\n<blockquote>
+      ⚡Самые передовые технологии рекламы в телеграм по самым низким ценам\n 
+
+      ⚡ Забудьте о риске блокировок. Наш бот разработан с учетом всех требований безопасности и антиспам-политик\n
+        
+      ⚡ Используйте фото, GIF, видео, файлы, премиум стикеры, форматирование текста и кнопки-ссылки\n
+        
+      ⚡ Есть система умных закрепов без перебивания\n
+        
+      ⚡ 24/7 антифлуд мониторинг/ночной режим \n
+        
+      ⚡ Отслеживайте эффективность постов с помощью статистики \n
+        
+      ⚡ Сохраняйте и редактируйте шаблоны и пресеты для быстрой настройки\n</blockquote>\n
+      🔗 <a href = "https://t.me/anubisXmain/8">Зеркало</a> 🔗| @anubisXmain`,
+      });
 
       await bot.api.sendMessage(
         user.chatid,
@@ -513,6 +472,7 @@ bot.on("my_chat_member", async (ctx) => {
       {
         id: ctx.update.my_chat_member.chat.id,
         title: ctx.update.my_chat_member.chat.title,
+        messagesBetweenPosts: 20,
       },
     ];
     await bott.save();

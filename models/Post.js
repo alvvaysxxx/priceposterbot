@@ -63,6 +63,10 @@ const Post = new Schema({
     type: Array,
     default: [], // {date, chat}
   },
+  smartSend: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 module.exports = model("post", Post);

@@ -59,6 +59,10 @@ const Preset = new Schema({
     type: Boolean,
     default: false,
   },
+  smartSend: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 module.exports = model("preset", Preset);

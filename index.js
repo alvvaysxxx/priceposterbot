@@ -41,7 +41,7 @@ run().catch(console.dir);
 const bot = new Bot("6548429406:AAEKot9_x9kJfu_0tw41Evg43AsohnIp7So");
 
 // ! Development
-// const bot = new Bot("7017953999:AAFTEuXrzYvbh44r6C-rahA8dp3fRtBoYmU"); // <-- put your bot token between the ""
+//const bot = new Bot("7017953999:AAFTEuXrzYvbh44r6C-rahA8dp3fRtBoYmU"); // <-- put your bot token between the ""
 
 // You can now register listeners on your bot object `bot`.
 // grammY will call the listeners when users send messages to your bot.
@@ -155,9 +155,12 @@ bot.command("newpromo", async (ctx) => {
       days,
     });
     await newPromo.save();
-    await ctx.reply(`Промокод на ${days} дней:\n<b>${newPromo._id}</b>`, {
-      parse_mode: "HTML",
-    });
+    await ctx.reply(
+      `Промокод на ${days} дней:\n<code><b>${newPromo._id}</b></code>\nДля активации перейдите в @trippleP_bot > Панель > Личный кабинет`,
+      {
+        parse_mode: "HTML",
+      }
+    );
   } catch (err) {
     console.error(err);
   }
