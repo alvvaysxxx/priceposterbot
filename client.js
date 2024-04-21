@@ -235,7 +235,7 @@ bot.on("callback_query:data", async (ctx) => {
         handleAutoPosting(post.id, endTime, maxId);
       });
       const job = new SimpleIntervalJob(
-        { seconds: 60 /*post.periodicity * 60 * 60*/ },
+        { seconds: post.periodicity * 60 * 60 },
         task,
         {
           id: maxId,
@@ -369,7 +369,7 @@ bot.on("callback_query:data", async (ctx) => {
         handleAutoPosting(post.id, endTime, maxId);
       });
       const job = new SimpleIntervalJob(
-        { seconds: 60 /*post.periodicity * 60 * 60*/ },
+        { seconds: post.periodicity * 60 * 60 },
         task,
         {
           id: maxId,
