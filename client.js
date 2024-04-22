@@ -156,15 +156,12 @@ async function handleAutoPosting(id, endTime, jobid) {
               3600) ||
           !pinned.pinned_message
         ) {
+          try {
           await postbot.api.pinChatMessage(chats[i].id, message.message_id);
-          console.log(
-            Math.floor(Date.now() / 1000) - pinned.pinned_message.date
-          );
-        } else {
-          console.log(
-            Math.floor(Date.now() / 1000) - pinned.pinned_message.date
-          );
-        }
+          } catch (err) {
+            console.log(err);
+          }
+        } 
         console.log(`Пост отправлен`);
       } catch (err) {
         console.log(err);
