@@ -13,7 +13,8 @@ const enterMessage = require("./handlers/enterMessage");
 let maxId = 0;
 
 // ! Production
-const uri = "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const uri =
+  "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 // ! Development
 //const uri =
@@ -178,7 +179,7 @@ bot.on("message", async (ctx) => {
       for (let i = 0; i < bott.chats.length; i++) {
         if (bott.chats[i].title == title) {
           if (!bott.chats[i].hasOwnProperty("messagesBetweenPosts")) {
-            bott.chats[i].messagesBetweenPosts = 1;
+            bott.chats[i].messagesBetweenPosts = 20;
           }
           bott.chats[i].messagesBetweenPosts += 1;
         }
@@ -199,6 +200,7 @@ bot.on("callback_query:data", async (ctx) => {
     ) {
       const id = ctx.callbackQuery.data.split("|")[1];
       let post = await Post.findById(id);
+      let bott = await BotModel.findOne({ token: post.bot });
       await bot.api.deleteMessage(
         ctx.chat.id,
         ctx.callbackQuery.message.message_id
@@ -213,6 +215,9 @@ bot.on("callback_query:data", async (ctx) => {
           reply_markup: keyboard,
         }
       );
+      bott.chats.messagesBetweenPosts = 21;
+      bott.markModified("chats");
+      await bott.save();
       post.active = true;
       await post.save();
       // Configure the scheduling task
@@ -310,6 +315,7 @@ bot.on("callback_query:data", async (ctx) => {
     if (ctx.callbackQuery.data.includes("start_posting_preset")) {
       const id = ctx.callbackQuery.data.split("|")[1];
       let preset = await Preset.findById(id);
+      let bott = await BotModel.findOne({ token: post.bot });
       let post = new Post({
         duration: preset.duration,
         periodicity: preset.periodicity,
@@ -348,6 +354,9 @@ bot.on("callback_query:data", async (ctx) => {
         }
       );
       post.active = true;
+      bott.chats.messagesBetweenPosts = 21;
+      bott.markModified("chats");
+      await bott.save();
       await post.save();
       // Configure the scheduling task
       const startTime = new Date();
