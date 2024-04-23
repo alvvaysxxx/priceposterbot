@@ -13,8 +13,7 @@ const enterMessage = require("./handlers/enterMessage");
 let maxId = 0;
 
 // ! Production
-const uri =
-  "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const uri = "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 // ! Development
 //const uri =
@@ -80,14 +79,10 @@ async function handleAutoPosting(id, endTime, jobid) {
       }
 
       try {
-        console.log(post.smartSend);
         if (post.smartSend) {
-          if (!bott.chats[i].hasOwnProperty("messagesBetweenPosts")) {
-            bott.chats[i].messagesBetweenPosts = 20;
-          }
           if (bott.chats[i].messagesBetweenPosts < 20) {
             console.log("не подходит smartsend");
-            ++i;
+            continue;
           } else {
             console.log(
               "подходит smartSend",
@@ -151,17 +146,17 @@ async function handleAutoPosting(id, endTime, jobid) {
           }
         }
         if (
-          (pinned.pinned_message &&
-            Math.floor(Date.now() / 1000) - pinned.pinned_message.date >
-              3600) ||
-          !pinned.pinned_message
+          ("pinned_message" in pinned &&
+            Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600 &&
+            pinned.pinned_message.from.username != bott.username) ||
+          !("pinned_message" in pinned)
         ) {
           try {
-          await postbot.api.pinChatMessage(chats[i].id, message.message_id);
+            await postbot.api.pinChatMessage(chats[i].id, message.message_id);
           } catch (err) {
-            console.log(err);
+            console.log("У бота нет прав на закрепление сообщений");
           }
-        } 
+        }
         console.log(`Пост отправлен`);
       } catch (err) {
         console.log(err);
@@ -189,7 +184,6 @@ bot.on("message", async (ctx) => {
         }
       }
       bott.markModified("chats");
-      console.log(bott.chats);
       await bott.save();
     }
   } catch (err) {
