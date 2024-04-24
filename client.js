@@ -99,7 +99,6 @@ async function handleAutoPosting(id, endTime, jobid) {
         bott.markModified("chats");
         bott.sentMessages.push({ date: Date.now(), chat: chats[i] });
         post.sentMessages.push({ date: Date.now(), chat: chats[i] });
-
         await bott.save();
         await post.save();
         let keyboard = null;
