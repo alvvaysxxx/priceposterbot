@@ -83,7 +83,6 @@ async function handleAutoPosting(id, endTime, jobid) {
         if (post.smartSend) {
           if (bott.chats[i].messagesBetweenPosts < 20) {
             console.log("не подходит smartsend");
-            continue;
           } else {
             console.log(
               "подходит smartSend",
