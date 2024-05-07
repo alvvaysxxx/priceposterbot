@@ -41,18 +41,18 @@ const bot = new Bot(process.argv[2]);
 
 async function handleAutoPosting(id, endTime, jobid) {
   try {
+    let post = await Post.findById(id);
     console.log("отправляем пост");
     let now = new Date();
     if (now.getTime() >= endTime) {
       console.log("Пост должен быть удален (длительность)");
-      scheduler.stopById(jobid);
+      scheduler.removeById(jobid);
       await Post.findByIdAndDelete(id).exec();
       return;
     }
 
-    let post = await Post.findById(id);
     if (!post) {
-      scheduler.stopById(jobid);
+      scheduler.removeById(jobid);
       console.log("пост не найден");
       return;
     }
@@ -61,8 +61,30 @@ async function handleAutoPosting(id, endTime, jobid) {
       return;
     }
     if (!post.active) {
-      scheduler.stopById(jobid);
+      scheduler.removeById(jobid);
       console.log("пост неактив");
+      return;
+    }
+
+    // Получаем текущую дату и время
+    const currentDate = new Date();
+
+    // Устанавливаем временную зону на Восточную Европу (UTC+2)
+    currentDate.toLocaleString("en-US", { timeZone: "Europe/Moscow" });
+
+    // Получаем текущий час
+    const currentHour = currentDate.getHours();
+
+    // Проверяем, находимся ли мы в периоде от 12 ночи до 6 утра
+    const isNight =
+      currentHour >= post.nightModeValue[0] &&
+      currentHour < post.nightModeValue[1];
+
+    // Записываем результат в переменную
+    const isNightTime = isNight ? true : false;
+
+    if (post.nightMode && isNightTime) {
+      console.log("Сейчас ночь!");
       return;
     }
 
@@ -80,25 +102,9 @@ async function handleAutoPosting(id, endTime, jobid) {
       }
 
       try {
-        if (post.smartSend) {
-          if (bott.chats[i].messagesBetweenPosts < 20) {
-            console.log("не подходит smartsend");
-          } else {
-            console.log(
-              "подходит smartSend",
-              bott.chats[i].messagesBetweenPosts < 20
-            );
-          }
-        }
-
         let pinned = await postbot.api.getChat(chats[i].id);
 
         console.log(`Отправляем пост ${post._id} в ${chats[i].title}`);
-        bott.chats[i].messagesBetweenPosts = 0;
-        bott.markModified("chats");
-        bott.sentMessages.push({ date: Date.now(), chat: chats[i] });
-        post.sentMessages.push({ date: Date.now(), chat: chats[i] });
-        await bott.save();
         await post.save();
         let keyboard = null;
         if (post.button) {
@@ -131,12 +137,24 @@ async function handleAutoPosting(id, endTime, jobid) {
             parseInt(post.msg)
           );
         } else {
-          if (post.file_id) {
+          if (post.isGif) {
+            message = await postbot.api.sendAnimation(
+              chats[i].id,
+              post.file_id,
+              {
+                caption: post.msg,
+                reply_markup: keyboard,
+                parse_mode: "HTML",
+              }
+            );
+          }
+          if (post.file_id && !post.isGif) {
             message = await postbot.api.sendPhoto(chats[i].id, post.file_id, {
               caption: post.msg,
               reply_markup: keyboard,
+              parse_mode: "HTML",
             });
-          } else {
+          } else if (!post.isGif) {
             message = await postbot.api.sendMessage(chats[i].id, post.msg, {
               parse_mode: "HTML",
               reply_markup: keyboard,
@@ -144,14 +162,27 @@ async function handleAutoPosting(id, endTime, jobid) {
             });
           }
         }
-        if (
-          ("pinned_message" in pinned &&
-            Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600 &&
-            pinned.pinned_message.from.username != bott.username) ||
+        console.log("Проверяем на закреп");
+        console.log(
+          "pinned_message" in pinned,
+          Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600,
+          pinned.pinned_message.from.username != bott.username,
           !("pinned_message" in pinned)
+        );
+        if (
+          Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600 &&
+          pinned.pinned_message.from.username != bott.username
         ) {
           try {
             await postbot.api.pinChatMessage(chats[i].id, message.message_id);
+
+            console.log(
+              "Бот закрепил сообщение",
+              "pinned_message" in pinned,
+              Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600,
+              pinned.pinned_message.from.username != bott.username,
+              !("pinned_message" in pinned)
+            );
           } catch (err) {
             console.log("У бота нет прав на закрепление сообщений");
           }
@@ -159,8 +190,6 @@ async function handleAutoPosting(id, endTime, jobid) {
         console.log(`Пост отправлен`);
       } catch (err) {
         console.log(err);
-        // Continue to the next iteration
-        continue;
       }
     }
   } catch (err) {
@@ -170,21 +199,46 @@ async function handleAutoPosting(id, endTime, jobid) {
 
 bot.on("message", async (ctx) => {
   try {
-    enterMessage(bot, ctx, "new");
-    if (ctx.chat.type == "group" || ctx.chat.type == "supergroup") {
-      let title = ctx.chat.title;
-      let bott = await BotModel.findOne({ token: process.argv[2] });
-      for (let i = 0; i < bott.chats.length; i++) {
-        if (bott.chats[i].title == title) {
-          if (!bott.chats[i].hasOwnProperty("messagesBetweenPosts")) {
-            bott.chats[i].messagesBetweenPosts = 20;
-          }
-          bott.chats[i].messagesBetweenPosts += 1;
-        }
+    if (
+      ctx.message !== undefined &&
+      ctx.message.reply_to_message !== undefined &&
+      ctx.message.reply_to_message.reply_markup !== undefined &&
+      ctx.message.reply_to_message.reply_markup.inline_keyboard[0][0].callback_data.includes(
+        "canceleditpreset"
+      )
+    ) {
+      let preset = await Preset.findById(
+        ctx.message.reply_to_message.reply_markup.inline_keyboard[0][0].callback_data.split(
+          "|"
+        )[1]
+      );
+      if (preset.forward) {
+        preset.msg = ctx.message.message_id;
+        preset.originalMsg = ctx.message.text;
+      } else {
+        preset.msg = ctx.message.text;
+        preset.originalMsg = ctx.message.text;
       }
-      bott.markModified("chats");
-      await bott.save();
+
+      await preset.save();
+      console.log(preset);
+      let keyboard = new InlineKeyboard()
+        .text("🖊️ Редактировать", `edit_preset|${preset._id}`)
+        .row()
+        .text("✅ Начать", `start_posting_preset|${preset._id}`)
+        .text("⛔ Отменить", `no_posting_preset|${preset._id}`);
+      await bot.api.sendMessage(
+        ctx.chat.id,
+        `Вы уверены, что хотите запустить этот автопостинг с текущим шаблоном?\n\nТекущие настройки:\n\n<b>Продолжительность:</b> ${preset.duration} часов\n<b>Периодичность:</b> ${preset.periodicity} часов`,
+        {
+          parse_mode: "HTML",
+          reply_markup: keyboard,
+          link_preview_options: { is_disabled: true },
+        }
+      );
+      return;
     }
+    enterMessage(bot, ctx, "new");
   } catch (err) {
     console.log(err);
   }
@@ -196,6 +250,7 @@ bot.on("callback_query:data", async (ctx) => {
       ctx.callbackQuery.data.includes("start_posting") &&
       !ctx.callbackQuery.data.includes("start_posting_preset")
     ) {
+      console.log("старт постинга");
       const id = ctx.callbackQuery.data.split("|")[1];
       let post = await Post.findById(id);
       let bott = await BotModel.findOne({ token: post.bot });
@@ -213,9 +268,7 @@ bot.on("callback_query:data", async (ctx) => {
           reply_markup: keyboard,
         }
       );
-      bott.chats.messagesBetweenPosts = 21;
-      bott.markModified("chats");
-      await bott.save();
+
       post.active = true;
       await post.save();
       // Configure the scheduling task
@@ -228,6 +281,7 @@ bot.on("callback_query:data", async (ctx) => {
         console.log("hey");
         handleAutoPosting(post.id, endTime, maxId);
       });
+
       const job = new SimpleIntervalJob(
         { seconds: post.periodicity * 60 * 60 },
         task,
@@ -235,6 +289,7 @@ bot.on("callback_query:data", async (ctx) => {
           id: maxId,
         }
       );
+      console.log("начал работу");
       scheduler.addSimpleIntervalJob(job);
       console.log("starting posting");
       handleAutoPosting(post.id, endTime, maxId);
@@ -289,7 +344,9 @@ bot.on("callback_query:data", async (ctx) => {
         file_id: data.file_id,
         paused: data.paused,
         sendMessages: data.sentMessages,
-        smartSend: data.smartSend,
+        nightMode: data.nightMode,
+        nightModeValue: data.nightModeValue,
+        isGif: data.isGif,
       });
       await newPreset.save();
       await bot.api.deleteMessage(
@@ -302,7 +359,10 @@ bot.on("callback_query:data", async (ctx) => {
       );
     }
 
-    if (ctx.callbackQuery.data.includes("canceledit")) {
+    if (
+      ctx.callbackQuery.data.includes("canceledit") &&
+      !ctx.callbackQuery.data.includes("canceleditpreset")
+    ) {
       await bot.api.deleteMessage(
         ctx.chat.id,
         ctx.callbackQuery.message.message_id
@@ -310,10 +370,33 @@ bot.on("callback_query:data", async (ctx) => {
       enterMessage(bot, ctx, "rewrite");
     }
 
+    if (ctx.callbackQuery.data.includes("canceleditpreset")) {
+      console.log("cancelling");
+      await bot.api.deleteMessage(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id
+      );
+      let preset = await Preset.findById(ctx.callbackQuery.data.split("|")[1]);
+      let keyboard = new InlineKeyboard()
+        .text("🖊️ Редактировать", `edit_preset|${preset._id}`)
+        .row()
+        .text("✅ Начать", `start_posting_preset|${preset._id}`)
+        .text("⛔ Отменить", `no_posting_preset|${preset._id}`);
+      await bot.api.sendMessage(
+        ctx.chat.id,
+        `Вы уверены, что хотите запустить этот автопостинг с текущим шаблоном?\n\nТекущие настройки:\n\n<b>Продолжительность:</b> ${preset.duration} часов\n<b>Периодичность:</b> ${preset.periodicity} часов`,
+        {
+          parse_mode: "HTML",
+          reply_markup: keyboard,
+          link_preview_options: { is_disabled: true },
+        }
+      );
+    }
+
     if (ctx.callbackQuery.data.includes("start_posting_preset")) {
       const id = ctx.callbackQuery.data.split("|")[1];
       let preset = await Preset.findById(id);
-      let bott = await BotModel.findOne({ token: post.bot });
+      let bott = await BotModel.findOne({ token: preset.bot });
       let post = new Post({
         duration: preset.duration,
         periodicity: preset.periodicity,
@@ -334,7 +417,9 @@ bot.on("callback_query:data", async (ctx) => {
         file_id: preset.file_id,
         paused: preset.paused,
         sendMessages: preset.sentMessages,
-        smartSend: preset.smartSend,
+        nightMode: preset.nightMode,
+        nightModeValue: preset.nightModeValue,
+        isGif: preset.isGif,
       });
       await bot.api.deleteMessage(
         ctx.chat.id,
@@ -415,6 +500,29 @@ bot.on("callback_query:data", async (ctx) => {
         }
       );
     }
+
+    if (ctx.callbackQuery.data.includes("edit_preset")) {
+      const id = ctx.callbackQuery.data.split("|")[1];
+      let preset = await Preset.findById(id);
+
+      const keyboard = new InlineKeyboard().text(
+        "🚫 Отменить",
+        `canceleditpreset|${preset._id}`
+      );
+
+      await bot.api.deleteMessage(
+        ctx.chat.id,
+        ctx.callbackQuery.message.message_id
+      );
+      await bot.api.sendMessage(
+        ctx.chat.id,
+        `Вы собираетесь отредактировать шаблон\nПришлите новый текст, который нужно постить <b>в ответ на это сообщение</b>\nПредыдущий текст будет перезаписан. Отредактирован будет ТОЛЬКО ТЕКСТ`,
+        {
+          parse_mode: "HTML",
+          reply_markup: keyboard,
+        }
+      );
+    }
   } catch (err) {
     console.log(err);
   }
@@ -473,6 +581,7 @@ bot.on("my_chat_member", async (ctx) => {
         messagesBetweenPosts: 20,
       },
     ];
+    bott.markModified("chats");
     await bott.save();
   } catch (err) {
     console.log(err);

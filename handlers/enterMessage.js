@@ -7,6 +7,7 @@ const Preset = require("../models/Preset");
 const schedule = require("node-schedule");
 const { ToadScheduler, SimpleIntervalJob, Task } = require("toad-scheduler");
 const scheduler = new ToadScheduler();
+const axios = require("axios");
 
 const parseTelegramMessage = require("./parseTelegramMessage");
 
@@ -82,8 +83,8 @@ async function enterMessage(bot, ctx, mode) {
             post.duration
           } часов\n<b>Периодичность:</b> ${
             post.periodicity
-          } часов\n<b>Смарт-отправка:</b> ${
-            post.smartSend ? "Вкл." : "Выкл"
+          } часов\n<b>Режим сна:</b> ${
+            post.nightMode ? "Вкл." : "Выкл"
           }\n\nПостинг будет произведен в следующие чаты:\n${chatsString}`,
           {
             parse_mode: "HTML",
@@ -119,6 +120,7 @@ async function enterMessage(bot, ctx, mode) {
             );
           }
         }
+
         if (ctx.message.photo) {
           await bot.api.sendPhoto(
             ctx.chat.id,
@@ -131,8 +133,22 @@ async function enterMessage(bot, ctx, mode) {
           );
           post.file_id =
             ctx.message.photo[ctx.message.photo.length - 1].file_id;
+          console.log(post.file_id);
           post.msg = parseTelegramMessage(ctx);
           post.originalMsg = ctx.message.caption;
+        } else if (ctx.message.animation) {
+          await bot.api.sendAnimation(
+            ctx.chat.id,
+            ctx.message.animation.file_id,
+            {
+              caption: parseTelegramMessage(ctx),
+              parse_mode: "HTML",
+              reply_markup: keyboard,
+            }
+          );
+          post.file_id = ctx.message.animation.file_id;
+          post.originalMsg = ctx.message.caption;
+          post.isGif = true;
         } else {
           await bot.api.sendMessage(ctx.chat.id, parseTelegramMessage(ctx), {
             parse_mode: "HTML",
@@ -168,7 +184,9 @@ async function enterMessage(bot, ctx, mode) {
             post.periodicity
           } часов\n<b>Смарт-отправка:</b> ${
             post.smartSend ? "Вкл." : "Выкл"
-          }\n\nПостинг будет произведен в следующие чаты:\n${chatsString}`,
+          }\n <b>Режим сна: ${
+            post.nightMode ? "Вкл." : "Выкл"
+          } </b>\n\nПостинг будет произведен в следующие чаты:\n${chatsString}`,
           {
             parse_mode: "HTML",
             reply_markup: keyboard,
