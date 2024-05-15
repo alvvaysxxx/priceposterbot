@@ -103,7 +103,7 @@ async function handleAutoPosting(id, endTime, jobid) {
 
       try {
         let pinned = await postbot.api.getChat(chats[i].id);
-
+        await new Promise((r) => setTimeout(r, 1000));
         console.log(`Отправляем пост ${post._id} в ${chats[i].title}`);
         await post.save();
         let keyboard = null;
