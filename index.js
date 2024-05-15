@@ -149,7 +149,7 @@ bot.command("subs", async (ctx) => {
     if (ctx.chat.id != "6709838943" && ctx.chat.id != "806166779") {
       return await ctx.reply("Недостаточно прав для выполнения команды.");
     }
-    let users = await User.find({ subscription: true });
+    let users = await User.find({ subscribed: true });
 
     let message = "";
     for (let i = 0; i < users.length; i++) {
