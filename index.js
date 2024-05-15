@@ -144,6 +144,25 @@ bot.command("start", async (ctx) => {
   }
 });
 
+bot.command("subs", async (ctx) => {
+  try {
+    if (ctx.chat.id != "6709838943" && ctx.chat.id != "806166779") {
+      return await ctx.reply("Недостаточно прав для выполнения команды.");
+    }
+    let users = await User.find({ subscription: true });
+
+    let message = "";
+    for (let i = 0; i < users.length; i++) {
+      message += `👤 <a href = "https://t.me/${users[i].username}">${users[i].username}</a>\n\n`;
+    }
+    await ctx.reply(message, {
+      parse_mode: "HTML",
+    });
+  } catch (err) {
+    console.log(err);
+  }
+});
+
 bot.command("newpromo", async (ctx) => {
   try {
     if (ctx.chat.id != "6709838943" && ctx.chat.id != "806166779") {
