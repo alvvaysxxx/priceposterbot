@@ -13,12 +13,12 @@ const enterMessage = require("./handlers/enterMessage");
 let maxId = 0;
 
 // ! Production
-//const uri =
-//  "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const uri =
+  "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 // ! Development
-const uri =
-  "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+//const uri =
+//  "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 const clientOptions = {
   serverApi: { version: "1", strict: true, deprecationErrors: true },

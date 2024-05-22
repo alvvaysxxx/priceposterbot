@@ -16,12 +16,12 @@ process.on("uncaughtException", function (err) {
 });
 
 // ! Production
-//const uri =
-//  "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const uri =
+  "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 // ! Development
-const uri =
-  "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+//const uri =
+//  "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 const clientOptions = {
   serverApi: { version: "1", strict: false, deprecationErrors: true },
@@ -38,10 +38,10 @@ run().catch(console.dir);
 // Create an instance of the `Bot` class and pass your bot token to it.
 
 // ! Production
-//const bot = new Bot("6548429406:AAEKot9_x9kJfu_0tw41Evg43AsohnIp7So");
+const bot = new Bot("6548429406:AAEKot9_x9kJfu_0tw41Evg43AsohnIp7So");
 
 // ! Development
-const bot = new Bot("7017953999:AAFTEuXrzYvbh44r6C-rahA8dp3fRtBoYmU"); // <-- put your bot token between the ""
+//const bot = new Bot("7017953999:AAFTEuXrzYvbh44r6C-rahA8dp3fRtBoYmU"); // <-- put your bot token between the ""
 
 // You can now register listeners on your bot object `bot`.
 // grammY will call the listeners when users send messages to your bot.
