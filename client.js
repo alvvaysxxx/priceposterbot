@@ -13,12 +13,12 @@ const enterMessage = require("./handlers/enterMessage");
 let maxId = 0;
 
 // ! Production
-const uri =
-  "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+//const uri =
+//  "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 // ! Development
-//const uri =
-//  "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+const uri =
+  "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 const clientOptions = {
   serverApi: { version: "1", strict: true, deprecationErrors: true },
@@ -37,11 +37,40 @@ async function run() {
 }
 run().catch(console.dir);
 
+(async () => {
+  console.log("Загрузка постов бота...");
+  let dbposts = await Post.find({ bot: process.argv[2], active: true });
+  console.log(dbposts);
+
+  for (let i = 0; i < dbposts.length; i++) {
+    const startTime = new Date();
+    const endTime = new Date(
+      startTime.getTime() + dbposts[i].duration * 60 * 60 * 1000
+    ); // duration hours after start
+    ++maxId;
+    const task = new Task("bot task", () => {
+      console.log("hey");
+      handleAutoPosting(dbposts[i].id, endTime, maxId);
+    });
+
+    const job = new SimpleIntervalJob(
+      { seconds: dbposts[i].periodicity * 60 * 60 },
+      task,
+      {
+        id: maxId,
+      }
+    );
+    scheduler.addSimpleIntervalJob(job);
+    console.log("запустил автопостинг по данным из БД", dbposts[i]._id);
+  }
+})();
+
 const bot = new Bot(process.argv[2]);
 
 async function handleAutoPosting(id, endTime, jobid) {
   try {
     let post = await Post.findById(id);
+    console.log(id);
     console.log("отправляем пост");
     let now = new Date();
     if (now.getTime() >= endTime) {
@@ -163,30 +192,14 @@ async function handleAutoPosting(id, endTime, jobid) {
           }
         }
         console.log("Проверяем на закреп");
-        console.log(
-          "pinned_message" in pinned,
-          Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600,
-          pinned.pinned_message.from.username != bott.username,
-          !("pinned_message" in pinned)
-        );
+        console.log(Math.floor(Date.now() / 1000) - pinned.pinned_message.date);
         if (
-          Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600 &&
-          pinned.pinned_message.from.username != bott.username
+          pinned.pinned_message &&
+          Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600
         ) {
-          try {
-            await postbot.api.pinChatMessage(chats[i].id, message.message_id);
-
-            console.log(
-              "Бот закрепил сообщение",
-              "pinned_message" in pinned,
-              Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600,
-              pinned.pinned_message.from.username != bott.username,
-              !("pinned_message" in pinned)
-            );
-          } catch (err) {
-            console.log("У бота нет прав на закрепление сообщений");
-          }
+          await bot.api.pinChatMessage(chats[i].id, message.message_id);
         }
+
         console.log(`Пост отправлен`);
       } catch (err) {
         console.log(err);

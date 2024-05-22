@@ -94,7 +94,7 @@ async function enterMessage(bot, ctx, mode) {
         );
         if (mode == "new") {
           post.msg = ctx.message.message_id;
-          post.originalMsg = ctx.message.text;
+          post.originalMsg = ctx.message.text || ctx.message.caption;
         }
         await post.save();
       } else {
@@ -194,7 +194,6 @@ async function enterMessage(bot, ctx, mode) {
           }
         );
         post.msg = parseTelegramMessage(ctx);
-        post.originalMsg = ctx.message.text;
         await post.save();
       }
     }
