@@ -47,7 +47,6 @@ async function enterMessage(bot, ctx, mode) {
       let post = await Post.findById(id);
       let bott = await BotModel.findOne({ token: post.bot });
       let postbot = new Bot(post.bot);
-      console.log(ctx.message);
       if (post.forward) {
         await postbot.api.sendMessage(ctx.chat.id, "Предпросмотр сообщения:");
 
@@ -133,7 +132,6 @@ async function enterMessage(bot, ctx, mode) {
           );
           post.file_id =
             ctx.message.photo[ctx.message.photo.length - 1].file_id;
-          console.log(post.file_id);
           post.msg = parseTelegramMessage(ctx);
           post.originalMsg = ctx.message.caption;
         } else if (ctx.message.animation) {

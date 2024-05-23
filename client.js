@@ -33,14 +33,12 @@ async function run() {
   // Create a Mongoose client with a MongoClientOptions object to set the Stable API version
   await mongoose.connect(uri, clientOptions);
   await mongoose.connection.db.admin().command({ ping: 1 });
-  console.log("Pinged your deployment. You successfully connected to MongoDB!");
 }
 run().catch(console.dir);
 
 (async () => {
   console.log("Загрузка постов бота...");
   let dbposts = await Post.find({ bot: process.argv[2], active: true });
-  console.log(dbposts);
 
   for (let i = 0; i < dbposts.length; i++) {
     const startTime = new Date();
@@ -49,7 +47,6 @@ run().catch(console.dir);
     ); // duration hours after start
     ++maxId;
     const task = new Task("bot task", () => {
-      console.log("hey");
       handleAutoPosting(dbposts[i].id, endTime, maxId);
     });
 
@@ -192,7 +189,6 @@ async function handleAutoPosting(id, endTime, jobid) {
           }
         }
         console.log("Проверяем на закреп");
-        console.log(Math.floor(Date.now() / 1000) - pinned.pinned_message.date);
         if (
           pinned.pinned_message &&
           Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600
@@ -234,7 +230,6 @@ bot.on("message", async (ctx) => {
       }
 
       await preset.save();
-      console.log(preset);
       let keyboard = new InlineKeyboard()
         .text("🖊️ Редактировать", `edit_preset|${preset._id}`)
         .row()
@@ -304,7 +299,6 @@ bot.on("callback_query:data", async (ctx) => {
       );
       console.log("начал работу");
       scheduler.addSimpleIntervalJob(job);
-      console.log("starting posting");
       handleAutoPosting(post.id, endTime, maxId);
     }
     if (
@@ -384,7 +378,6 @@ bot.on("callback_query:data", async (ctx) => {
     }
 
     if (ctx.callbackQuery.data.includes("canceleditpreset")) {
-      console.log("cancelling");
       await bot.api.deleteMessage(
         ctx.chat.id,
         ctx.callbackQuery.message.message_id
@@ -461,7 +454,6 @@ bot.on("callback_query:data", async (ctx) => {
       ); // duration hours after start
       ++maxId;
       const task = new Task("bot task", () => {
-        console.log("hey");
         handleAutoPosting(post.id, endTime, maxId);
       });
       const job = new SimpleIntervalJob(
