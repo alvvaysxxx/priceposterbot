@@ -63,6 +63,7 @@ run().catch(console.dir);
 })();
 
 const bot = new Bot(process.argv[2]);
+const mainbot = new Bot("6548429406:AAEKot9_x9kJfu_0tw41Evg43AsohnIp7So");
 
 async function handleAutoPosting(id, endTime, jobid) {
   try {
@@ -198,11 +199,11 @@ async function handleAutoPosting(id, endTime, jobid) {
 
         console.log(`Пост отправлен`);
       } catch (err) {
-        console.log(err);
+        await mainbot.api.sendMessage(806166779, `${err} - ${bott.username}`);
       }
     }
   } catch (err) {
-    console.log(err);
+    await mainbot.api.sendMessage(806166779, `${err} - ${bott.username}`);
   }
 }
 
