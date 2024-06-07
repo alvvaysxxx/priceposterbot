@@ -14,7 +14,7 @@ let maxId = 0;
 
 // ! Production
 const uri =
-  "mongodb+srv://urionzzz:79464241@cluster0.1ioriuw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+  "mongodb+srv://urionzzz:79464241@cluster1.4etfnvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1";
 
 // ! Development
 //const uri =
