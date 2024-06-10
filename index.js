@@ -24,7 +24,12 @@ const uri =
 //  "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 const clientOptions = {
-  serverApi: { version: "1", strict: false, deprecationErrors: true },
+  serverApi: {
+    version: "1",
+    strict: false,
+    deprecationErrors: true,
+  },
+  poolSize: 2,
 };
 
 async function run() {
