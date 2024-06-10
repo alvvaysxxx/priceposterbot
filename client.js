@@ -20,15 +20,6 @@ const uri =
 //const uri =
 //  "mongodb+srv://urionzzz:79464241Ru!@cluster0.u09fzh7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
-const clientOptions = {
-  serverApi: {
-    version: "1",
-    strict: false,
-    deprecationErrors: true,
-  },
-  poolSize: 1,
-};
-
 process.on("uncaughtException", function (err) {
   console.log(err, process.argv[2]);
   console.log("Node NOT Exiting...");
@@ -36,7 +27,7 @@ process.on("uncaughtException", function (err) {
 
 async function run() {
   // Create a Mongoose client with a MongoClientOptions object to set the Stable API version
-  await mongoose.connect(uri, clientOptions);
+  await mongoose.connect(uri, { maxPoolSize: 2 });
   await mongoose.connection.db.admin().command({ ping: 1 });
 }
 run().catch(console.dir);

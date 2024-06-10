@@ -34,7 +34,7 @@ const clientOptions = {
 
 async function run() {
   // Create a Mongoose client with a MongoClientOptions object to set the Stable API version
-  await mongoose.connect(uri, clientOptions);
+  await mongoose.connect(uri, { maxPoolSize: 2 });
   await mongoose.connection.db.admin().command({ ping: 1 });
   console.log("Pinged your deployment. You successfully connected to MongoDB!");
 }
