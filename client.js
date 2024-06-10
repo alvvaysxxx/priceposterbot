@@ -27,13 +27,14 @@ process.on("uncaughtException", function (err) {
 
 async function run() {
   // Create a Mongoose client with a MongoClientOptions object to set the Stable API version
-  await mongoose.connect(uri, { maxPoolSize: 2 });
+  await mongoose.connect(uri, { maxPoolSize: 3 });
   await mongoose.connection.db.admin().command({ ping: 1 });
 }
 run().catch(console.dir);
 
 (async () => {
   console.log("Загрузка постов бота...");
+  await new Promise((r) => setTimeout(r, 500));
   let dbposts = await Post.find({ bot: process.argv[2], active: true });
 
   for (let i = 0; i < dbposts.length; i++) {
