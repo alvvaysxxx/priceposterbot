@@ -83,7 +83,7 @@ function findArrayDifference(arr1, arr2) {
 // Добавляем слушатели к  ботам клиентов
 async function handleClientBots() {
   try {
-    let dbBots = await BotModel.find();
+    let dbBots = await BotModel.find().select("-sentMessages").exec();
     if (bots.length == 0) {
       bots = dbBots;
       console.log("Обновление списка ботов");

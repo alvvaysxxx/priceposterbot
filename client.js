@@ -112,7 +112,7 @@ async function handleAutoPosting(id, endTime, jobid) {
       return;
     }
 
-    let bott = await BotModel.findOne({ token: post.bot });
+    let bott = await BotModel.findOne({ token: post.bot }).select("-sentMessages").exec();
 
     let postbot = new Bot(bott.token);
 
@@ -259,7 +259,7 @@ bot.on("callback_query:data", async (ctx) => {
       console.log("старт постинга");
       const id = ctx.callbackQuery.data.split("|")[1];
       let post = await Post.findById(id);
-      let bott = await BotModel.findOne({ token: post.bot });
+      let bott = await BotModel.findOne({ token: post.bot }).select("-sentMessages").exec()
       await bot.api.deleteMessage(
         ctx.chat.id,
         ctx.callbackQuery.message.message_id
@@ -400,7 +400,7 @@ bot.on("callback_query:data", async (ctx) => {
     if (ctx.callbackQuery.data.includes("start_posting_preset")) {
       const id = ctx.callbackQuery.data.split("|")[1];
       let preset = await Preset.findById(id);
-      let bott = await BotModel.findOne({ token: preset.bot });
+      let bott = await BotModel.findOne({ token: preset.bot }).select("-sentMessages").exec();
       let post = new Post({
         duration: preset.duration,
         periodicity: preset.periodicity,
@@ -541,10 +541,10 @@ bot.on("my_chat_member", async (ctx) => {
     }
     let bott;
     if (ctx.update.my_chat_member.new_chat_member.status === "administrator") {
-      bott = await BotModel.findOne({ token: process.argv[2] });
+      bott = await BotModel.findOne({ token: process.argv[2] }).select("-sentMessages").exec();
       let { chats } = bott;
       for (let i = 0; i < chats.length; i++) {
-        if (chats[i].title == ctx.update.my_chat_member.chat.title) {
+        if (chats[i].id == ctx.update.my_chat_member.chat.id) {
           return;
         }
       }
