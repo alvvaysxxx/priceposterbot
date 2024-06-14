@@ -188,13 +188,13 @@ async function handleAutoPosting(id, endTime, jobid) {
             });
           }
         }
-        console.log("Проверяем на закреп");
+        /*console.log("Проверяем на закреп");
         if (
           pinned.pinned_message &&
           Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600
         ) {
           await bot.api.pinChatMessage(chats[i].id, message.message_id);
-        }
+        }*/
 
         console.log(`Пост отправлен`);
       } catch (err) {
