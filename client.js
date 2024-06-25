@@ -63,6 +63,7 @@ const bot = new Bot(process.argv[2]);
 const mainbot = new Bot("6548429406:AAEKot9_x9kJfu_0tw41Evg43AsohnIp7So");
 
 async function handleAutoPosting(id, endTime, jobid) {
+  let bott; // Объявляем переменную bott здесь
   try {
     let post = await Post.findById(id);
     console.log(id);
@@ -112,7 +113,7 @@ async function handleAutoPosting(id, endTime, jobid) {
       return;
     }
 
-    let bott = await BotModel.findOne({ token: post.bot })
+    bott = await BotModel.findOne({ token: post.bot })
       .select("-sentMessages")
       .exec();
 
@@ -128,7 +129,6 @@ async function handleAutoPosting(id, endTime, jobid) {
       }
 
       try {
-        let pinned = await postbot.api.getChat(chats[i].id);
         await new Promise((r) => setTimeout(r, 1000));
         console.log(`Отправляем пост ${post._id} в ${chats[i].title}`);
         await post.save();
@@ -188,13 +188,6 @@ async function handleAutoPosting(id, endTime, jobid) {
             });
           }
         }
-        /*console.log("Проверяем на закреп");
-        if (
-          pinned.pinned_message &&
-          Math.floor(Date.now() / 1000) - pinned.pinned_message.date > 3600
-        ) {
-          await bot.api.pinChatMessage(chats[i].id, message.message_id);
-        }*/
 
         console.log(`Пост отправлен`);
       } catch (err) {
@@ -202,7 +195,10 @@ async function handleAutoPosting(id, endTime, jobid) {
       }
     }
   } catch (err) {
-    await mainbot.api.sendMessage(806166779, `${err} - ${bott.username}`);
+    await mainbot.api.sendMessage(
+      806166779,
+      `${err} - ${bott ? bott.username : "unknown"}`
+    );
   }
 }
 
