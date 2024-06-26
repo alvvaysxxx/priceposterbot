@@ -34,18 +34,19 @@ run().catch(console.dir);
 
 (async () => {
   console.log("Загрузка постов бота...");
-  await new Promise((r) => setTimeout(r, 500));
   let dbposts = await Post.find({ bot: process.argv[2], active: true });
 
   for (let i = 0; i < dbposts.length; i++) {
+    ++maxId;
     const startTime = new Date();
     const endTime = new Date(
       startTime.getTime() + dbposts[i].duration * 60 * 60 * 1000
     ); // duration hours after start
-    ++maxId;
     const task = new Task("bot task", () => {
       handleAutoPosting(dbposts[i].id, endTime, maxId);
     });
+
+    console.log("maxid", maxId);
 
     const job = new SimpleIntervalJob(
       { seconds: dbposts[i].periodicity * 60 * 60 },
@@ -129,7 +130,6 @@ async function handleAutoPosting(id, endTime, jobid) {
       }
 
       try {
-        await new Promise((r) => setTimeout(r, 1000));
         console.log(`Отправляем пост ${post._id} в ${chats[i].title}`);
         await post.save();
         let keyboard = null;
