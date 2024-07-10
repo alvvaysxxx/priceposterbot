@@ -37,6 +37,7 @@ run().catch(console.dir);
   let dbposts = await Post.find({ bot: process.argv[2], active: true });
 
   for (let i = 0; i < dbposts.length; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
     ++maxId;
     const startTime = new Date();
     const endTime = new Date(
@@ -66,6 +67,7 @@ const mainbot = new Bot("6548429406:AAEKot9_x9kJfu_0tw41Evg43AsohnIp7So");
 async function handleAutoPosting(id, endTime, jobid) {
   let bott; // Объявляем переменную bott здесь
   try {
+    await new Promise((r) => setTimeout(r, 5000));
     let post = await Post.findById(id);
     console.log(id);
     console.log("отправляем пост");
