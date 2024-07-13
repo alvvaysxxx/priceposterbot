@@ -99,6 +99,7 @@ async function handleClientBots() {
       bots = findArrayDifference(bots, dbBots);
     }
     for (let i = 0; i < bots.length; i++) {
+      await new Promise((r) => setTimeout(r, 500));
       const childProcess = spawn("node", ["client.js", bots[i].token]);
 
       // Обработка события вывода данных из процесса

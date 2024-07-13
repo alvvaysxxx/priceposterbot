@@ -37,7 +37,7 @@ run().catch(console.dir);
   let dbposts = await Post.find({ bot: process.argv[2], active: true });
 
   for (let i = 0; i < dbposts.length; i++) {
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 120000));
     ++maxId;
     const startTime = new Date();
     const endTime = new Date(
